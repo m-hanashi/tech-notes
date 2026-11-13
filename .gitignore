@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Claude Code（個人用の指示と設定は公開しない）
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Terraform（state・plan・変数の値は公開しない）
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars

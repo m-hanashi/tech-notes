@@ -1,0 +1,3 @@
+# このファイルを terraform.tfvars という名前でコピーし、値を書き換える。
+# terraform.tfvars は .gitignore で除外しているので、公開されない。
+notification_email = "you@example.com"

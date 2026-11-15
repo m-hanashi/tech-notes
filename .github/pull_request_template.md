@@ -1,4 +1,5 @@
 Closes #
+<!-- マージのあとに apply が要る Terraform の変更は、Closes ではなく Refs #番号 と書き、apply の結果を Issue に書いてから手で閉じる -->
 
 ## 変更の内容
 <!-- 変えたファイルと、その内容 -->

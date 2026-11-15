@@ -1,0 +1,21 @@
+# 手元で動かす PostgreSQL。AWS の Aurora と同じ 18 にそろえる。
+# パスワードは手元の検証用で、AWS では使わない。
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: technotes
+      POSTGRES_PASSWORD: technotes
+      POSTGRES_DB: technotes
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "technotes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

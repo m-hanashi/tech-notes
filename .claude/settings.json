@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(terraform apply*)",
+      "Bash(terraform destroy*)",
+      "Bash(gh pr merge*)",
+      "Bash(git push*)",
+      "Bash(gh workflow run*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh repo edit*)"
+    ],
+    "ask": [
+      "Edit(.claude/settings.json)",
+      "Edit(~/.claude/settings.json)"
+    ]
+  }
+}

@@ -100,7 +100,7 @@ Rebase:        main ─ A' ─ B' ─ C'（A・B・C を main の先に並べ直
 | Allow merge commits | 無効 | |
 | Allow squash merging | 有効 | |
 | └ コミットのタイトル | PR のタイトル | 例：`権限設定を追加する (#3)` |
-| └ コミットの本文 | PR の本文 | `Closes #番号`、AI に任せた部分などが、main のコミットに残る |
+| └ コミットの本文 | PR の本文 | `Closes #番号`、判断したこと、確認の欄などが、main のコミットに残る |
 | Allow rebase merging | 無効 | |
 | Automatically delete head branches | 有効 | マージ後、GitHub 上の作業用ブランチを自動で消す |
 

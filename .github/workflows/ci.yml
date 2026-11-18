@@ -15,6 +15,27 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    # DB を使うテストのために、ジョブの横で PostgreSQL を動かす（#35）。
+    # 手元の compose.yaml と同じ版・同じ値にそろえる。手元の検証用の値で、AWS では使わない。
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: technotes
+          POSTGRES_PASSWORD: technotes
+          POSTGRES_DB: technotes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U technotes"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://technotes:technotes@localhost:5432/technotes?sslmode=disable
+
     steps:
       # 外部の部品は、コミット ID で指定する（CLAUDE.md）
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

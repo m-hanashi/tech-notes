@@ -12,6 +12,7 @@ Tech Notes（AWS 上の小さな Web API を題材にした、個人の技術検
 | よくある間違いを検査する | `go vet ./...` |
 | API を手元で起動する | `go run ./cmd/api`（ポートは環境変数 `PORT`、既定は 8080） |
 | 手元の PostgreSQL を起動する・止める | `docker compose up -d`・`docker compose down` |
+| マイグレーションを適用する・状態を見る | `go run ./cmd/migrate`・`go run ./cmd/migrate status`（DB の接続の指定は環境変数 `DATABASE_URL`。手元は `postgres://technotes:technotes@localhost:5432/technotes?sslmode=disable`） |
 
 ## ファイルの役割
 

@@ -37,7 +37,7 @@ func TestHealth(t *testing.T) {
 		},
 	}
 
-	router := NewRouter()
+	router := NewRouter(nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, nil)

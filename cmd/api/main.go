@@ -22,8 +22,8 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpapi.NewRouter(),
-		ReadHeaderTimeout: 5 * time.Second, // ヘッダーを送りきらない接続で、待たされ続けないようにする
+		Handler:           httpapi.NewRouter(nil), // メモの API は、DB につなぐ次の PR で有効にする
+		ReadHeaderTimeout: 5 * time.Second,        // ヘッダーを送りきらない接続で、待たされ続けないようにする
 	}
 
 	// ECS がタスクを止めるときに送る SIGTERM を受け取ったら、

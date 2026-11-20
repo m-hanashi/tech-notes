@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +24,19 @@ type NoteStore interface {
 	Create(ctx context.Context, n notes.Note) error
 	// Get は、id のメモを返す。なければ notes.ErrNotFound を返す。
 	Get(ctx context.Context, id uuid.UUID) (notes.Note, error)
+	// List は、新しい順に、最大 limit 件のメモを返す。
+	List(ctx context.Context, limit int) ([]notes.Note, error)
+}
+
+// 一覧の件数（仕様書 4.4）
+const (
+	defaultListLimit = 20
+	maxListLimit     = 100
+)
+
+// listNotesResponse は、一覧の応答の形。あとでページ送りの情報を足せるように、入れ物に入れる。
+type listNotesResponse struct {
+	Notes []notes.Note `json:"notes"`
 }
 
 type notesHandler struct {
@@ -101,4 +116,29 @@ func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, n)
+}
+
+// list は、GET /notes を処理する。
+func (h *notesHandler) list(w http.ResponseWriter, r *http.Request) {
+	limit := defaultListLimit
+	if s := r.URL.Query().Get("limit"); s != "" {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 1 || n > maxListLimit {
+			writeProblem(w, http.StatusBadRequest, fmt.Sprintf("limit は1〜%dの整数で指定してください", maxListLimit))
+			return
+		}
+		limit = n
+	}
+
+	list, err := h.store.List(r.Context(), limit)
+	if err != nil {
+		slog.Error("メモの一覧を読み出せませんでした", "error", err)
+		writeProblem(w, http.StatusInternalServerError, "メモの一覧の取得に失敗しました")
+		return
+	}
+	if list == nil {
+		list = []notes.Note{} // 1件もないときも、null ではなく [] を返す
+	}
+
+	writeJSON(w, http.StatusOK, listNotesResponse{Notes: list})
 }

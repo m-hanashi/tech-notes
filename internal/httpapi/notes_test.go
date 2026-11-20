@@ -17,8 +17,9 @@ import (
 
 // fakeStore は、テスト用の偽の保存先。保存したメモを覚え、決めたエラーを返せる。
 type fakeStore struct {
-	created []notes.Note
-	err     error
+	created  []notes.Note
+	err      error
+	gotLimit int // List に渡された limit
 }
 
 func (s *fakeStore) Create(_ context.Context, n notes.Note) error {
@@ -39,6 +40,19 @@ func (s *fakeStore) Get(_ context.Context, id uuid.UUID) (notes.Note, error) {
 		}
 	}
 	return notes.Note{}, notes.ErrNotFound
+}
+
+// List は、受け取った limit を覚えておき、保存したメモを新しい順（入れた順の逆）に返す。
+func (s *fakeStore) List(_ context.Context, limit int) ([]notes.Note, error) {
+	s.gotLimit = limit
+	if s.err != nil {
+		return nil, s.err
+	}
+	var list []notes.Note
+	for i := len(s.created) - 1; i >= 0 && len(list) < limit; i-- {
+		list = append(list, s.created[i])
+	}
+	return list, nil
 }
 
 func postNote(t *testing.T, store NoteStore, body string) *httptest.ResponseRecorder {
@@ -192,6 +206,69 @@ func TestGetNote(t *testing.T) {
 			t.Errorf("DB のエラー文が、応答に含まれている：%s", rec.Body.String())
 		}
 	})
+}
+
+func listNotes(t *testing.T, store NoteStore, query string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/notes"+query, nil)
+	rec := httptest.NewRecorder()
+	NewRouter(store).ServeHTTP(rec, req)
+	return rec
+}
+
+func TestListNotes(t *testing.T) {
+	t.Run("新しい順に並ぶ", func(t *testing.T) {
+		older, newer := notes.Note{Title: "古い"}, notes.Note{Title: "新しい"}
+		rec := listNotes(t, &fakeStore{created: []notes.Note{older, newer}}, "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("状態コード：got %d, want 200", rec.Code)
+		}
+		var got listNotesResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("本文を読めない：%v", err)
+		}
+		if len(got.Notes) != 2 || got.Notes[0].Title != "新しい" || got.Notes[1].Title != "古い" {
+			t.Errorf("並び順：got %+v", got.Notes)
+		}
+	})
+
+	t.Run("1件もないときは [] を返す", func(t *testing.T) {
+		rec := listNotes(t, &fakeStore{}, "")
+		if got := strings.TrimSpace(rec.Body.String()); got != `{"notes":[]}` {
+			t.Errorf("本文：got %s, want {\"notes\":[]}", got)
+		}
+	})
+
+	// limit の扱い。保存先に渡された limit で確かめる（件数の打ち切りは、DB のテストで確かめる）
+	tests := []struct {
+		name       string
+		query      string
+		wantStatus int
+		wantLimit  int // 200 のときに、保存先に渡されるべき limit
+	}{
+		{"limit なしは 20", "", http.StatusOK, 20},
+		{"limit=5 は 5", "?limit=5", http.StatusOK, 5},
+		{"limit=100 は 100", "?limit=100", http.StatusOK, 100},
+		{"limit=101 は 400", "?limit=101", http.StatusBadRequest, 0},
+		{"limit=0 は 400", "?limit=0", http.StatusBadRequest, 0},
+		{"limit=-1 は 400", "?limit=-1", http.StatusBadRequest, 0},
+		{"limit=abc は 400", "?limit=abc", http.StatusBadRequest, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := &fakeStore{}
+			rec := listNotes(t, store, tt.query)
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("状態コード：got %d, want %d（本文：%s）", rec.Code, tt.wantStatus, rec.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK && store.gotLimit != tt.wantLimit {
+				t.Errorf("保存先に渡した limit：got %d, want %d", store.gotLimit, tt.wantLimit)
+			}
+			if tt.wantStatus >= 400 {
+				assertProblem(t, rec, tt.wantStatus)
+			}
+		})
+	}
 }
 
 // assertProblem は、応答が RFC 9457 の形のエラーであることを確かめる。

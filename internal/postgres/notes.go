@@ -4,6 +4,9 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
+
+	"github.com/google/uuid"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL のドライバー（pgx）を "pgx" という名前で登録する
 
@@ -33,4 +36,20 @@ func (s *NoteStore) Create(ctx context.Context, n notes.Note) error {
 		n.ID, n.Title, n.Body, n.CreatedAt,
 	)
 	return err
+}
+
+// Get は、id のメモを返す。なければ notes.ErrNotFound を返す。
+func (s *NoteStore) Get(ctx context.Context, id uuid.UUID) (notes.Note, error) {
+	var n notes.Note
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, title, body, created_at FROM notes WHERE id = $1`, id,
+	).Scan(&n.ID, &n.Title, &n.Body, &n.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return notes.Note{}, notes.ErrNotFound
+	}
+	if err != nil {
+		return notes.Note{}, err
+	}
+	n.CreatedAt = n.CreatedAt.UTC()
+	return n, nil
 }

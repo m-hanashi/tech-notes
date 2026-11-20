@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -102,5 +103,30 @@ func TestCreate_ErrorWhenDBUnreachable(t *testing.T) {
 
 	if err := NewNoteStore(db).Create(context.Background(), newNote("題名")); err == nil {
 		t.Error("DB につながらないのに、エラーにならなかった")
+	}
+}
+
+func TestGet_ReturnsSavedNote(t *testing.T) {
+	store := NewNoteStore(openTestDB(t))
+	want := newNote("日本語の題名")
+	if err := store.Create(context.Background(), want); err != nil {
+		t.Fatalf("保存に失敗した：%v", err)
+	}
+
+	got, err := store.Get(context.Background(), want.ID)
+	if err != nil {
+		t.Fatalf("読み出しに失敗した：%v", err)
+	}
+	if got != want {
+		t.Errorf("読み出した内容が違う：got %+v, want %+v", got, want)
+	}
+}
+
+func TestGet_NotFound(t *testing.T) {
+	store := NewNoteStore(openTestDB(t))
+
+	_, err := store.Get(context.Background(), uuid.Must(uuid.NewV7()))
+	if !errors.Is(err, notes.ErrNotFound) {
+		t.Errorf("ない id のエラー：got %v, want notes.ErrNotFound", err)
 	}
 }

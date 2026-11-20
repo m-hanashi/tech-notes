@@ -8,6 +8,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/m-hanashi/tech-notes/internal/notes"
 )
@@ -24,6 +27,18 @@ func (s *fakeStore) Create(_ context.Context, n notes.Note) error {
 	}
 	s.created = append(s.created, n)
 	return nil
+}
+
+func (s *fakeStore) Get(_ context.Context, id uuid.UUID) (notes.Note, error) {
+	if s.err != nil {
+		return notes.Note{}, s.err
+	}
+	for _, n := range s.created {
+		if n.ID == id {
+			return n, nil
+		}
+	}
+	return notes.Note{}, notes.ErrNotFound
 }
 
 func postNote(t *testing.T, store NoteStore, body string) *httptest.ResponseRecorder {
@@ -118,6 +133,65 @@ func TestCreateNote_StoreError(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "10.0.1.23") {
 		t.Errorf("DB のエラー文が、応答に含まれている：%s", rec.Body.String())
 	}
+}
+
+func getNote(t *testing.T, store NoteStore, id string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/notes/"+id, nil)
+	rec := httptest.NewRecorder()
+	NewRouter(store).ServeHTTP(rec, req)
+	return rec
+}
+
+func TestGetNote(t *testing.T) {
+	saved := notes.Note{
+		ID:        uuid.Must(uuid.NewV7()),
+		Title:     "買い物",
+		Body:      "牛乳を買う",
+		CreatedAt: time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC),
+	}
+
+	t.Run("ある id は 200 とメモを返す", func(t *testing.T) {
+		rec := getNote(t, &fakeStore{created: []notes.Note{saved}}, saved.ID.String())
+		if rec.Code != http.StatusOK {
+			t.Fatalf("状態コード：got %d, want 200（本文：%s）", rec.Code, rec.Body.String())
+		}
+		var got notes.Note
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("本文を読めない：%v", err)
+		}
+		if got != saved {
+			t.Errorf("返したメモ：got %+v, want %+v", got, saved)
+		}
+	})
+
+	t.Run("ない id は 404 を返す", func(t *testing.T) {
+		rec := getNote(t, &fakeStore{}, uuid.Must(uuid.NewV7()).String())
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("状態コード：got %d, want 404", rec.Code)
+		}
+		assertProblem(t, rec, http.StatusNotFound)
+	})
+
+	t.Run("UUID の形でない id は 400 を返す", func(t *testing.T) {
+		rec := getNote(t, &fakeStore{}, "abc")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("状態コード：got %d, want 400", rec.Code)
+		}
+		assertProblem(t, rec, http.StatusBadRequest)
+	})
+
+	t.Run("DB の不調は 500 を返し、エラー文を漏らさない", func(t *testing.T) {
+		store := &fakeStore{err: errors.New("connection refused: 10.0.1.23:5432")}
+		rec := getNote(t, store, saved.ID.String())
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("状態コード：got %d, want 500", rec.Code)
+		}
+		assertProblem(t, rec, http.StatusInternalServerError)
+		if strings.Contains(rec.Body.String(), "10.0.1.23") {
+			t.Errorf("DB のエラー文が、応答に含まれている：%s", rec.Body.String())
+		}
+	})
 }
 
 // assertProblem は、応答が RFC 9457 の形のエラーであることを確かめる。

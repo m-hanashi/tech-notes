@@ -14,6 +14,7 @@ func NewRouter(store NoteStore) http.Handler {
 	if store != nil {
 		h := &notesHandler{store: store}
 		mux.HandleFunc("POST /notes", h.create)
+		mux.HandleFunc("GET /notes/{id}", h.get)
 	}
 	return mux
 }

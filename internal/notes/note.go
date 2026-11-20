@@ -17,6 +17,9 @@ const (
 	MaxBodyLength  = 10000
 )
 
+// ErrNotFound は、指定したメモがないことを表す。
+var ErrNotFound = errors.New("メモが見つかりません")
+
 // Note は、メモ1件。
 type Note struct {
 	ID        uuid.UUID `json:"id"`

@@ -16,10 +16,12 @@ import (
 // maxRequestBytes は、受け取る本文の大きさの上限。これを超える本文は、読む前に 413 で断る。
 const maxRequestBytes = 1 << 20 // 1MB
 
-// NoteStore は、メモを保存する部品に求めること。
-// 本物は PostgreSQL を使う部品（次の PR で作る）、テストでは偽物に差し替える。
+// NoteStore は、メモを保存し、読み出す部品に求めること。
+// 本物は PostgreSQL を使う部品（internal/postgres）、テストでは偽物に差し替える。
 type NoteStore interface {
 	Create(ctx context.Context, n notes.Note) error
+	// Get は、id のメモを返す。なければ notes.ErrNotFound を返す。
+	Get(ctx context.Context, id uuid.UUID) (notes.Note, error)
 }
 
 type notesHandler struct {
@@ -76,4 +78,27 @@ func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", "/notes/"+id.String())
 	writeJSON(w, http.StatusCreated, n)
+}
+
+// get は、GET /notes/{id} を処理する。
+func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		writeProblem(w, http.StatusBadRequest, "id は UUID の形で指定してください")
+		return
+	}
+
+	n, err := h.store.Get(r.Context(), id)
+	if errors.Is(err, notes.ErrNotFound) {
+		writeProblem(w, http.StatusNotFound, "メモが見つかりません")
+		return
+	}
+	if err != nil {
+		// DB のエラー文は外に見せず、ログにだけ書く
+		slog.Error("メモを読み出せませんでした", "error", err)
+		writeProblem(w, http.StatusInternalServerError, "メモの取得に失敗しました")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, n)
 }

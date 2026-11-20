@@ -122,6 +122,26 @@ func TestGet_ReturnsSavedNote(t *testing.T) {
 	}
 }
 
+func TestList_NewestFirstAndLimit(t *testing.T) {
+	store := NewNoteStore(openTestDB(t))
+	base := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
+	for i, title := range []string{"1番目", "2番目", "3番目"} {
+		n := newNote(title)
+		n.CreatedAt = base.Add(time.Duration(i) * time.Minute) // 1分ずつ新しくする
+		if err := store.Create(context.Background(), n); err != nil {
+			t.Fatalf("保存に失敗した：%v", err)
+		}
+	}
+
+	got, err := store.List(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("一覧の読み出しに失敗した：%v", err)
+	}
+	if len(got) != 2 || got[0].Title != "3番目" || got[1].Title != "2番目" {
+		t.Errorf("新しい順に2件：got %+v", got)
+	}
+}
+
 func TestGet_NotFound(t *testing.T) {
 	store := NewNoteStore(openTestDB(t))
 

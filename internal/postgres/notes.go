@@ -53,3 +53,26 @@ func (s *NoteStore) Get(ctx context.Context, id uuid.UUID) (notes.Note, error) {
 	n.CreatedAt = n.CreatedAt.UTC()
 	return n, nil
 }
+
+// List は、新しい順に、最大 limit 件のメモを返す。
+// 同じ時刻のメモは、id の大きい順に並べる（UUID v7 は作った順に大きくなる）。
+func (s *NoteStore) List(ctx context.Context, limit int) ([]notes.Note, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, title, body, created_at FROM notes ORDER BY created_at DESC, id DESC LIMIT $1`, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []notes.Note
+	for rows.Next() {
+		var n notes.Note
+		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &n.CreatedAt); err != nil {
+			return nil, err
+		}
+		n.CreatedAt = n.CreatedAt.UTC()
+		list = append(list, n)
+	}
+	return list, rows.Err()
+}

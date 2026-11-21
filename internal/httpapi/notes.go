@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -61,6 +62,11 @@ func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
 			writeProblem(w, http.StatusRequestEntityTooLarge, "本文は1MB以内にしてください")
 			return
 		}
+		writeProblem(w, http.StatusBadRequest, "本文の JSON が正しくありません")
+		return
+	}
+	// JSON の値のあとに、余計なデータが続いていないかを確かめる
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		writeProblem(w, http.StatusBadRequest, "本文の JSON が正しくありません")
 		return
 	}

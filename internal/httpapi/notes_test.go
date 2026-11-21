@@ -20,9 +20,11 @@ type fakeStore struct {
 	created  []notes.Note
 	err      error
 	gotLimit int // List に渡された limit
+	calls    int // Create・Get・List のどれかが呼ばれた回数
 }
 
 func (s *fakeStore) Create(_ context.Context, n notes.Note) error {
+	s.calls++
 	if s.err != nil {
 		return s.err
 	}
@@ -31,6 +33,7 @@ func (s *fakeStore) Create(_ context.Context, n notes.Note) error {
 }
 
 func (s *fakeStore) Get(_ context.Context, id uuid.UUID) (notes.Note, error) {
+	s.calls++
 	if s.err != nil {
 		return notes.Note{}, s.err
 	}
@@ -44,6 +47,7 @@ func (s *fakeStore) Get(_ context.Context, id uuid.UUID) (notes.Note, error) {
 
 // List は、受け取った limit を覚えておき、保存したメモを新しい順（入れた順の逆）に返す。
 func (s *fakeStore) List(_ context.Context, limit int) ([]notes.Note, error) {
+	s.calls++
 	s.gotLimit = limit
 	if s.err != nil {
 		return nil, s.err

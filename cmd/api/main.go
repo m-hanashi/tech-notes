@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,6 +27,14 @@ func main() {
 		slog.Error("環境変数 DATABASE_URL が空です")
 		os.Exit(1)
 	}
+	// API キーが空のまま起動すると、誰でも使える状態になるので、起動しない。
+	// 前後の空白と改行は取り除く（ファイルから登録した秘密情報の末尾に、改行が残ることがあるため）
+	auth, err := httpapi.NewAPIKeyAuthenticator(strings.TrimSpace(os.Getenv("API_KEY")))
+	if err != nil {
+		slog.Error("環境変数 API_KEY が正しくありません", "error", err)
+		os.Exit(1)
+	}
+
 	// ここでは DB に接続しない。最初のリクエストでつなぐ。
 	// Aurora が自動休止していても、API の起動と /health は止めないため（仕様書 4.4、5.2）。
 	db, err := postgres.Open(dsn)
@@ -37,7 +46,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           httpapi.NewRouter(postgres.NewNoteStore(db)),
+		Handler:           httpapi.NewHandler(postgres.NewNoteStore(db), auth),
 		ReadHeaderTimeout: 5 * time.Second, // ヘッダーを送りきらない接続で、待たされ続けないようにする
 	}
 

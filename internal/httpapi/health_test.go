@@ -14,6 +14,7 @@ func TestHealth(t *testing.T) {
 		wantStatus      int
 		wantContentType string // 空なら確かめない
 		wantBody        string // 空なら確かめない
+		apiKey          string // 空なら X-API-Key を付けない。/health はキーなしで呼べることも、ここで確かめる
 	}{
 		{
 			name:            "GET /health は 200 と JSON の本文を返す",
@@ -30,17 +31,22 @@ func TestHealth(t *testing.T) {
 			wantStatus: http.StatusMethodNotAllowed,
 		},
 		{
+			// キーがないと、存在しないパスは 401 になる（auth_test.go）。ここでは、キーを付けて 404 を確かめる
 			name:       "GET /healthz は 404 を返す",
 			method:     http.MethodGet,
 			path:       "/healthz",
 			wantStatus: http.StatusNotFound,
+			apiKey:     testAPIKey,
 		},
 	}
 
-	router := NewRouter(nil)
+	router := newTestHandler(t, nil) // 本番と同じ、認証つきの入口を通す
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, nil)
+			if tt.apiKey != "" {
+				req.Header.Set("X-API-Key", tt.apiKey)
+			}
 			rec := httptest.NewRecorder()
 
 			router.ServeHTTP(rec, req)

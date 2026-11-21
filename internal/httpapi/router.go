@@ -3,7 +3,13 @@ package httpapi
 
 import "net/http"
 
+// NewHandler は、API 全体の入口を返す。認証してから、ルーターに渡す。main.go はこれを使う。
+func NewHandler(store NoteStore, auth Authenticator) http.Handler {
+	return requireAuth(auth, NewRouter(store))
+}
+
 // NewRouter は、メソッドとパスごとに、どのハンドラーで処理するかを決めたルーターを返す。
+// 認証はしない（NewHandler で包む）。
 // 登録していないパスには 404、登録したパスへの違うメソッドには 405 を、ルーターが自動で返す。
 //
 // store が nil のときは、メモの API を登録しない（DB につなぐまでの間、/health だけを動かすため）。

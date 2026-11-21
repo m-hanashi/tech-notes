@@ -41,6 +41,10 @@ func validateText(name, value string, maxLength int) error {
 	if strings.TrimSpace(value) == "" {
 		return errors.New(name + " は必須です")
 	}
+	// NUL 文字は PostgreSQL の text に保存できず、DB でエラーになるので、先に断る
+	if strings.ContainsRune(value, 0) {
+		return errors.New(name + " に使えない文字（NUL）が含まれています")
+	}
 	if utf8.RuneCountInString(value) > maxLength {
 		return fmt.Errorf("%s は%d文字以内にしてください", name, maxLength)
 	}

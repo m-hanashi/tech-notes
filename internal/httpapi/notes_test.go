@@ -118,6 +118,8 @@ func TestCreateNote_Validation(t *testing.T) {
 		{"body が空白だけ", jsonBody("題名", "   "), http.StatusBadRequest},
 		{"JSON が壊れている", `{"title":`, http.StatusBadRequest},
 		{"知らない項目がある", `{"title":"題名","body":"本文","tag":"x"}`, http.StatusBadRequest},
+		{"JSON の後ろに余計なデータがある", `{"title":"題名","body":"本文"}{"x":1}`, http.StatusBadRequest},
+		{"title に NUL 文字がある", `{"title":"a\u0000b","body":"本文"}`, http.StatusBadRequest},
 		{"本文が1MBを超える", jsonBody("題名", strings.Repeat("a", 1<<20)), http.StatusRequestEntityTooLarge},
 		{"title が200文字", jsonBody(strings.Repeat("a", 200), "本文"), http.StatusCreated},
 		{"title が201文字", jsonBody(strings.Repeat("a", 201), "本文"), http.StatusBadRequest},

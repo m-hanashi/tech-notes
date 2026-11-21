@@ -20,6 +20,9 @@ import (
 )
 
 func main() {
+	// ログは JSON で標準出力に出す（cmd/api と同じ）
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	if err := run(); err != nil {
 		slog.Error("マイグレーションに失敗しました", "error", err)
 		os.Exit(1)

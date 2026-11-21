@@ -17,6 +17,9 @@ import (
 )
 
 func main() {
+	// ログは JSON で標準出力に出す（仕様書 第8章。CloudWatch Logs で項目ごとに検索できるようにするため）
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -47,7 +50,11 @@ func main() {
 	srv := &http.Server{
 		Addr:              ":" + port,
 		Handler:           httpapi.NewHandler(postgres.NewNoteStore(db), auth),
-		ReadHeaderTimeout: 5 * time.Second, // ヘッダーを送りきらない接続で、待たされ続けないようにする
+		ReadHeaderTimeout: 5 * time.Second,  // ヘッダーを送りきらない接続で、待たされ続けないようにする
+		ReadTimeout:       10 * time.Second, // 本文をゆっくり送り続ける接続も切る
+		WriteTimeout:      35 * time.Second, // DB を待つ上限（30秒）より長くする
+		// ALB の待機の上限（60秒）より長くする。アプリが先に接続を切ると、ALB が切れた接続を使って 502 になるため
+		IdleTimeout: 75 * time.Second,
 	}
 
 	// ECS がタスクを止めるときに送る SIGTERM を受け取ったら、

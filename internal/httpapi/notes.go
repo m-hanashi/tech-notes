@@ -103,25 +103,38 @@ func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
 
 // get は、GET /notes/{id} を処理する。
 func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
+	n, ok := loadNote(w, r, h.store)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, n)
+}
+
+// loadNote は、URL の {id} のメモを取り出す。取得と要約の API で使う。
+// 取り出せなかったときは、理由に合った応答をここで書き、false を返す。
+func loadNote(w http.ResponseWriter, r *http.Request, store NoteStore) (notes.Note, bool) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		writeProblem(w, http.StatusBadRequest, "id は UUID の形で指定してください")
-		return
+		return notes.Note{}, false
 	}
 
-	n, err := h.store.Get(r.Context(), id)
-	if errors.Is(err, notes.ErrNotFound) {
+	n, err := store.Get(r.Context(), id)
+	switch {
+	case err == nil:
+		return n, true
+	case errors.Is(err, notes.ErrNotFound):
 		writeProblem(w, http.StatusNotFound, "メモが見つかりません")
-		return
-	}
-	if err != nil {
+	case r.Context().Err() != nil:
+		// 利用者が先に接続を切った。DB の失敗ではないので、5xx にしない
+		slog.Info("利用者が、メモの取得を待たずに接続を切りました", "error", err)
+		w.WriteHeader(statusClientClosedRequest)
+	default:
 		// DB のエラー文は外に見せず、ログにだけ書く
 		slog.Error("メモを読み出せませんでした", "error", err)
 		writeProblem(w, http.StatusInternalServerError, "メモの取得に失敗しました")
-		return
 	}
-
-	writeJSON(w, http.StatusOK, n)
+	return notes.Note{}, false
 }
 
 // list は、GET /notes を処理する。

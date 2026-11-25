@@ -61,7 +61,8 @@ Tech Notes（AWS 上の小さな Web API を題材にした、個人の技術検
 
 ## 決定済みの全体像（詳細は仕様書の第4〜8章）
 
-- AWS 東京リージョン。Go の API を ECS on Fargate で動かし、Aurora Serverless v2（PostgreSQL、自動休止）に保存する。AI 要約は Bedrock の Converse API。
+- AWS 東京リージョン。Go の API を ECS on Fargate で動かし、Aurora Serverless v2（PostgreSQL、自動休止）に保存する。AI 要約は Bedrock の Converse API。要約は初めて頼まれたときに生成して DB に保存し、2回目以降は保存したものを返す（AI の出力は、ほかのデータの変更や処理の判断に使わない）。
+- AI 駆動開発にも完成条件がある（仕様書 2.9）。AI が書いた変更はすべて PR とレビューを通し、危険な操作は権限設定で禁止し、人の判断を PR と ADR に残す。
 - Terraform は3つに分ける。準備用（state の S3 バケット、AWS Budgets）、常設層（VPC・Aurora・ECR・ECS クラスター・IAM・Route 53・SNS・ログの保存先など）、起動層（ALB・NAT Gateway・ECS サービス・アラーム・ダッシュボード。時間で料金がかかるものと、それに付随するもの）。層の間の値は SSM パラメータストアで受け渡す。
 - 起動層は GitHub Actions で作成・削除する。自動停止は30分ごとの定期実行で、タグの付いた NAT Gateway と ALB の作成時刻から3時間を過ぎたら削除する。
 - デプロイは CD が ECS を直接更新する（リポジトリのひな形からタスク定義を登録 → ECS の単発タスクでマイグレーション → 切り替え）。SSM パラメータストアに、「最後に正常に動いたバージョン」（コミット ID とタスク定義）と「取り消したバージョン」の2つを記録する。起動層の作成、起動時の追いつき、切り戻しは、どれもこの2つの記録で動く。

@@ -63,7 +63,7 @@ func postNote(t *testing.T, store NoteStore, body string) *httptest.ResponseReco
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/notes", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-	NewRouter(store, nil).ServeHTTP(rec, req)
+	NewRouter(store, nil, nil).ServeHTTP(rec, req)
 	return rec
 }
 
@@ -159,7 +159,7 @@ func getNote(t *testing.T, store NoteStore, id string) *httptest.ResponseRecorde
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/notes/"+id, nil)
 	rec := httptest.NewRecorder()
-	NewRouter(store, nil).ServeHTTP(rec, req)
+	NewRouter(store, nil, nil).ServeHTTP(rec, req)
 	return rec
 }
 
@@ -218,7 +218,7 @@ func TestGetNote(t *testing.T) {
 		cancel() // 利用者が接続を切った状態にする
 		req := httptest.NewRequest(http.MethodGet, "/notes/"+saved.ID.String(), nil).WithContext(ctx)
 		rec := httptest.NewRecorder()
-		NewRouter(&fakeStore{err: context.Canceled}, nil).ServeHTTP(rec, req) // DB が「打ち切られた」と返す
+		NewRouter(&fakeStore{err: context.Canceled}, nil, nil).ServeHTTP(rec, req) // DB が「打ち切られた」と返す
 		if rec.Code != statusClientClosedRequest {
 			t.Errorf("状態コード：got %d, want %d", rec.Code, statusClientClosedRequest)
 		}
@@ -229,7 +229,7 @@ func listNotes(t *testing.T, store NoteStore, query string) *httptest.ResponseRe
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/notes"+query, nil)
 	rec := httptest.NewRecorder()
-	NewRouter(store, nil).ServeHTTP(rec, req)
+	NewRouter(store, nil, nil).ServeHTTP(rec, req)
 	return rec
 }
 

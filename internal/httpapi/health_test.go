@@ -40,7 +40,7 @@ func TestHealth(t *testing.T) {
 		},
 	}
 
-	router := newTestHandler(t, nil, nil) // 本番と同じ、認証つきの入口を通す
+	router := newTestHandler(t, nil, nil, nil) // 本番と同じ、認証つきの入口を通す
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, nil)

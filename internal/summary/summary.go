@@ -15,6 +15,14 @@ var ErrThrottled = errors.New("AI の呼び出し回数の制限を超えまし�
 // ErrNotFound は、そのメモの要約が、まだ保存されていないことを表す。
 var ErrNotFound = errors.New("要約が保存されていません")
 
+// Generated は、AI が作った要約と、そのときに使ったモデルとトークン数。
+type Generated struct {
+	Text         string
+	Model        string
+	InputTokens  int
+	OutputTokens int
+}
+
 // Summary は、保存した要約1件（仕様書 4.4）。メモ1件につき1件。
 type Summary struct {
 	NoteID       uuid.UUID

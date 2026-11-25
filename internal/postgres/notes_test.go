@@ -16,7 +16,7 @@ import (
 	"github.com/m-hanashi/tech-notes/migrations"
 )
 
-// openTestDB は、DATABASE_URL の PostgreSQL につなぎ、マイグレーションを適用して、notes を空にする。
+// openTestDB は、DATABASE_URL の PostgreSQL につなぎ、マイグレーションを適用して、テーブルを空にする。
 // DATABASE_URL がなければ、テストを飛ばす（手元で DB を起動していないとき）。
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
@@ -37,7 +37,8 @@ func openTestDB(t *testing.T) *sql.DB {
 	if err := goose.Up(db, "."); err != nil {
 		t.Fatalf("マイグレーションに失敗した：%v", err)
 	}
-	if _, err := db.Exec(`TRUNCATE notes`); err != nil {
+	// summaries は notes を参照しているので、一緒に空にする（notes だけでは PostgreSQL が断る）
+	if _, err := db.Exec(`TRUNCATE summaries, notes`); err != nil {
 		t.Fatal(err)
 	}
 	return db

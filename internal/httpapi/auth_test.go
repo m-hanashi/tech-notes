@@ -10,13 +10,13 @@ import (
 const testAPIKey = "test-key"
 
 // newTestHandler は、本番と同じ入口（認証つき）を、偽の保存先で作る。
-func newTestHandler(t *testing.T, store NoteStore, summarizer Summarizer) http.Handler {
+func newTestHandler(t *testing.T, store NoteStore, summaries SummaryStore, summarizer Summarizer) http.Handler {
 	t.Helper()
 	auth, err := NewAPIKeyAuthenticator(testAPIKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewHandler(store, summarizer, auth)
+	return NewHandler(store, summaries, summarizer, auth)
 }
 
 func TestAuth(t *testing.T) {
@@ -46,7 +46,7 @@ func TestAuth(t *testing.T) {
 				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 			rec := httptest.NewRecorder()
-			newTestHandler(t, store, ai).ServeHTTP(rec, req)
+			newTestHandler(t, store, &fakeSummaryStore{}, ai).ServeHTTP(rec, req)
 
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("状態コード：got %d, want %d（本文：%s）", rec.Code, tt.wantStatus, rec.Body.String())
@@ -76,5 +76,5 @@ func TestNewHandler_PanicsWithoutAuthenticator(t *testing.T) {
 			t.Error("認証の部品が nil なのに、止まらなかった")
 		}
 	}()
-	NewHandler(&fakeStore{}, &fakeSummarizer{}, nil)
+	NewHandler(&fakeStore{}, &fakeSummaryStore{}, &fakeSummarizer{}, nil)
 }

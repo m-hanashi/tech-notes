@@ -50,10 +50,12 @@ func main() {
 	srv := &http.Server{
 		Addr: ":" + port,
 		// 要約の AI の部品は #29 で作る。それまでは nil を渡し、要約の API を登録しない
-		Handler:           httpapi.NewHandler(postgres.NewNoteStore(db), nil, auth),
+		Handler:           httpapi.NewHandler(postgres.NewNoteStore(db), postgres.NewSummaryStore(db), nil, auth),
 		ReadHeaderTimeout: 5 * time.Second,  // ヘッダーを送りきらない接続で、待たされ続けないようにする
 		ReadTimeout:       10 * time.Second, // 本文をゆっくり送り続ける接続も切る
-		WriteTimeout:      50 * time.Second, // 要約の最長（DB 30秒＋AI 15秒）より長く、ALB の60秒より短くする
+		// 要約の最長（DB 30秒＋AI 15秒）より長く、ALB の60秒より短くする。要約では DB を3回使うが、
+		// DB が休止から目覚めるのを待つのは最初の1回だけで、2回目以降はすぐ返る見込み（段階3で測る）
+		WriteTimeout: 50 * time.Second,
 		// ALB の待機の上限（60秒）より長くする。アプリが先に接続を切ると、ALB が切れた接続を使って 502 になるため
 		IdleTimeout: 75 * time.Second,
 	}
